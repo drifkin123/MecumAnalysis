@@ -25,8 +25,9 @@ object App extends App {
 
   // Prototype car link data extraction
   val linkToCar: String = mecumDao.baseURL + hrefsOfAllCarsOnPage(2)
+  println(s"FOR: ${linkToCar}")
   val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
   dataExtraction.extractData(carLinkDoc)
 
-  dataExtraction.dataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL)
+  //dataExtraction.dataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL)
 }
