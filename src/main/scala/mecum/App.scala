@@ -18,15 +18,15 @@ object App extends App {
   var res: Response = mecumDao.submitForm(form, List(("email", "danrifkin@sbcglobal.net")))
 
   // Go to search page
-  val searchPageConn: Document = mecumDao.submitSearchForm(res.cookies(), "Ford")
+  val searchPageConn: Document = mecumDao.submitSearchForm(res.cookies(), "past", "Ford")
 
   // Get links of all cars
   val hrefsOfAllCarsOnPage = mecumDao.hrefsForAllCarsOnPage(searchPageConn)
 
-  //for (href <- hrefsOfAllCarsOnPage) {
-    val linkToCar: String = mecumDao.baseURL + hrefsOfAllCarsOnPage(2)
-    //println(linkToCar)
-    val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
-    dataExtraction.extractData(carLinkDoc)
-  //}
+  // Prototype car link data extraction
+  val linkToCar: String = mecumDao.baseURL + hrefsOfAllCarsOnPage(2)
+  val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
+  dataExtraction.extractData(carLinkDoc)
+
+  dataExtraction.dataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL)
 }

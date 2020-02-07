@@ -15,8 +15,9 @@ class MecumSiteDaoImpl(
                         val baseURL: String,
                         val loginURL: String) {
 
-  def requestBodyForMake: String => String =
-    (make: String) => s"searchScope=past&searchText=&searchMake=$make&searchModel=&searchYearStart=&searchYearEnd=&submit="
+  def requestBodyForMake: (String, String) => String =
+    (searchScope: String, make: String) =>
+      s"searchScope=${searchScope}&searchText=&searchMake=$make&searchModel=&searchYearStart=&searchYearEnd=&submit="
 
   def connect(url: String): Connection = {
     org.jsoup.Jsoup.connect(url)
@@ -42,12 +43,12 @@ class MecumSiteDaoImpl(
     form.submit().data(dataMap.asJava).execute()
   }
 
-  def submitSearchForm(cookies: util.Map[String, String], make: String): Document = {
+  def submitSearchForm(cookies: util.Map[String, String], searchScope: String, make: String): Document = {
     Jsoup.connect(searchPageURL).
       cookies(cookies).
       referrer(referrer).
       userAgent(userAgent).
-      requestBody(requestBodyForMake(make)).
+      requestBody(requestBodyForMake(searchScope, make)).
       post()
   }
 

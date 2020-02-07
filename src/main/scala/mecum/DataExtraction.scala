@@ -1,9 +1,13 @@
 package mecum
 
+import mecum.App.{linkToCar, mecumDao, res}
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
 class DataExtractionImpl {
+
+  // will be private
+  // separate each step to different functions
   def extractData(el: Element): String = {
     val auctionInfo: String = el.select("h3.lot-auction-info").get(0).text()
     println(s"AUCTION INFO: ${auctionInfo}")
@@ -22,4 +26,20 @@ class DataExtractionImpl {
     }))
     ""
   }
+
+  // want to return List[CarMeta]
+  def dataFromHrefs(hrefs: List[String], baseURL: String): List[String] =
+    hrefs match {
+      case List() => List()
+      case href :: rest => {
+        val linkToCar: String = baseURL + href
+        val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
+        val str = carLinkDoc.select("h1.lot-title").get(0).text()
+        println("------------------------")
+        println(str)
+        // call extract data
+        str :: dataFromHrefs(rest, baseURL)
+      }
+    }
+
 }
