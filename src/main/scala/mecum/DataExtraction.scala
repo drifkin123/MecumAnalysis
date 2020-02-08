@@ -1,87 +1,139 @@
 package mecum
 
-import mecum.App.{linkToCar, mecumDao, res}
+import mecum.App.{mecumDao, res}
 import org.jsoup.nodes.Element
-import org.jsoup.select.Elements
 
 class DataExtractionImpl {
 
-  def extractAuctionInfo(el: Element): Option[(String, String, String)] = {
-    el.selectFirst("h3.lot-auction-info") match {
-      case el: Element => {
-        val elRegex = raw"(Lot [^ ]+) ([^0-9]+) (.*)".r
-        el.text match {
-          case elRegex(lot, location, date) => Some((lot, location, date))
-          case _ => None
+  def extractAuctionInfo(el: Element): Map[String, String] = {
+    val lotAuctionInfo = Option(el.selectFirst("h3.lot-auction-info"))
+    val elRegex = raw"(Lot [^ ]+) ([^0-9]+) (.*)".r
+
+    lotAuctionInfo match {
+      case Some(auctionInfoEl) => auctionInfoEl.text match {
+          case elRegex(lot, location, date) => Map(
+            "Lot" -> lot,
+            "AuctionLocation" -> location,
+            "AuctionDate" -> date)
+          case _ => Map()
         }
-      }
-      case _ => None
+      case _ => Map()
     }
   }
 
-  def extractBidStatus(el: Element): Option[String] = {
+  def extractBidStatus(el: Element): Map[String, String] = {
     val options: List[String] = List("bid-goes-on", "sold", "high-bid")
+    val elRegex = """class="(.*)"""".r
+    val auctionResults = Option(el.selectFirst("div.auction-results"))
 
-    el.selectFirst("div.auction-results") match {
-      case attrs => {
-        val attributes: String = attrs.attributes().toString.trim
-        val elRegex = """class="(.*)"""".r
+    auctionResults match {
+      case Some(auctionResultsEl) => {
+        val attributes: String = auctionResultsEl.attributes().toString.trim
+
         attributes match {
-          case elRegex(results) =>
-            results.split(" ").filter(options.contains(_)).toList.lift(0)
-          case _ => None
+          case elRegex(results) => {
+            val bidStatus = results.split(" ").filter(options.contains(_)).toList.lift(0)
+            bidStatus match {
+              case Some(status) => Map("AuctionStatus" -> status)
+              case _ => Map()
+            }
+          }
+          case _ => Map()
         }
       }
-      case _ => None
+      case _ => Map()
     }
   }
 
-  def extractCarType(el: Element): Option[(String, String)] = {
-    val lot = el.selectFirst("h1.lot-title").text
+  def extractCarType(el: Element): Map[String, String] = {
+    val lot = Option(el.selectFirst("h1.lot-title"))
     val elRegex = """([\d]+) (.*)""".r
 
     lot match {
-      case elRegex(year, car) => Some((year, car))
-      case _ => None
+      case Some(lotEl) => lotEl.text() match {
+          case elRegex(year, car) => Map("CarModel" -> car, "CarYear" -> year)
+          case _ => Map()
+        }
+      case _ => Map()
     }
   }
 
-  def extractData(el: Element): String = {
+  def extractPrice(el: Element): Map[String, String] = {
+    val price: Option[Element] = Option(el.selectFirst("span.lot-price"))
 
-    println(extractAuctionInfo(el))
-    println(extractBidStatus(el))
-    println(extractCarType(el))
-//    val auctionInfo: String = el.selectFirst("h3.lot-auction-info").text()
-//    println(s"AUCTION INFO: ${auctionInfo}")
-//    val bidStatus: String = el.selectFirst("div.auction-results").attributes().toString()
-//    println(s"BID STATUS: ${bidStatus}")
-//    val yearMakeModel: String = el.selectFirst("h1.lot-title").text()
-//    println(s"YEARMAKEMODEL: ${yearMakeModel}")
-//    val lotPrice: String = el.selectFirst("span.lot-price").text()
-//    println(s"LOT PRICE: ${lotPrice}")
-//    val etci: Elements = el.selectFirst(".lot-breakdown-list").children()
-//    println(etci)
-//    val miles: Elements = el.selectFirst("ul.lot-highlights").children()
-//    val filtered = miles.toArray.toList
-//    println(filtered.filter((str) => {
-//      str.toString().contains("miles")
-//    }))
-    ""
+    price match {
+      case Some(priceEl) => Map("CarPrice" -> priceEl.text())
+      case _ => Map()
+    }
   }
 
-  // want to return List[CarMeta]
-  def dataFromHrefs(hrefs: List[String], baseURL: String): List[String] =
+  def genMap(carComponents: List[String]): Map[String, String] = {
+    val elRegex = """<li><h5>(.+)<\/h5>(.+)<\/li>""".r
+
+    carComponents match {
+      case List() => Map()
+      case components :: rest => {
+        components match {
+          case elRegex(key, value) => Map(key -> value) ++ genMap(rest)
+          case _ => Map()
+        }
+      }
+    }
+  }
+
+  def extractLotBreakdown(el: Element): Map[String, String] = {
+    val lotBreakdownEl = Option(el.selectFirst(".lot-breakdown-list"))
+
+    lotBreakdownEl match {
+      case Some(logBreakdown) => {
+        val children = logBreakdown.children()
+        val lotInfo = children.toString.split("\n").toList
+        genMap(lotInfo)
+      }
+      case _ => Map()
+    }
+
+  }
+
+  def extractMiles(el: Element): Map[String, String] = {
+    val milesEl = Option(el.selectFirst("ul.lot-highlights"))
+    val milesLiRegex = """.*[<li>| ]([0-9,]+) miles.*""".r
+
+    milesEl match {
+      case Some(highlights) => {
+        val highlightList: List[String] = highlights.children().toString.split("\n").toList
+        val milesLi = highlightList.filter(_.contains("miles")).lift(0)
+        milesLi match {
+          case Some(milesLiEl) => {
+            milesLiEl match {
+              case milesLiRegex(miles) => Map("CarMiles" -> miles)
+              case _ => Map()
+            }
+          }
+          case _ => Map()
+        }
+      }
+      case _ => Map()
+    }
+  }
+
+  def extractData(el: Element): Map[String, String] = {
+    extractAuctionInfo(el) ++
+      extractBidStatus(el) ++
+      extractCarType(el) ++
+      extractPrice(el) ++
+      extractLotBreakdown(el) ++
+      extractMiles(el)
+  }
+
+  def dataFromHrefs(hrefs: List[String], baseURL: String): List[Map[String, String]] =
     hrefs match {
       case List() => List()
       case href :: rest => {
         val linkToCar: String = baseURL + href
         val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
-        val str = carLinkDoc.selectFirst("h1.lot-title").text()
-        println("------------------------")
-        println(str)
-        // call extract data
-        str :: dataFromHrefs(rest, baseURL)
+        val carDataMap: Map[String, String] = extractData(carLinkDoc) ++ Map("Link" -> linkToCar)
+        carDataMap :: dataFromHrefs(rest, baseURL)
       }
     }
-
 }
