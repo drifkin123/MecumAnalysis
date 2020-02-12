@@ -1,7 +1,5 @@
 package mecum
 
-import org.jsoup.Connection
-
 class AppWiring {
 
   val referrer = "https://www.mecum.com/infonet/search/reset/1/"
@@ -21,9 +19,7 @@ class AppWiring {
 
   val dataExtraction: DataExtractionImpl = new DataExtractionImpl()
 
-  case class CarMeta(year: String, make: String, model: String, engine: String,
-                     trans: String, miles: String, color: String, interior: String,
-                     auctionResult: String, lot: String, auctionDate: String,
-                     price: String)
+
+
 }
 

@@ -12,9 +12,9 @@ class DataExtractionImpl {
     lotAuctionInfo match {
       case Some(auctionInfoEl) => auctionInfoEl.text match {
           case elRegex(lot, location, date) => Map(
-            "Lot" -> lot,
-            "AuctionLocation" -> location,
-            "AuctionDate" -> date)
+            "lot" -> lot,
+            "auctionLocation" -> location,
+            "auctionDate" -> date)
           case _ => Map()
         }
       case _ => Map()
@@ -34,7 +34,7 @@ class DataExtractionImpl {
           case elRegex(results) => {
             val bidStatus = results.split(" ").filter(options.contains(_)).toList.lift(0)
             bidStatus match {
-              case Some(status) => Map("AuctionStatus" -> status)
+              case Some(status) => Map("AuctionResult" -> status)
               case _ => Map()
             }
           }
@@ -51,7 +51,7 @@ class DataExtractionImpl {
 
     lot match {
       case Some(lotEl) => lotEl.text() match {
-          case elRegex(year, car) => Map("CarModel" -> car, "CarYear" -> year)
+          case elRegex(year, car) => Map("makeModel" -> car, "year" -> year)
           case _ => Map()
         }
       case _ => Map()
@@ -62,7 +62,7 @@ class DataExtractionImpl {
     val price: Option[Element] = Option(el.selectFirst("span.lot-price"))
 
     price match {
-      case Some(priceEl) => Map("CarPrice" -> priceEl.text())
+      case Some(priceEl) => Map("price" -> priceEl.text())
       case _ => Map()
     }
   }
@@ -106,7 +106,7 @@ class DataExtractionImpl {
         milesLi match {
           case Some(milesLiEl) => {
             milesLiEl match {
-              case milesLiRegex(miles) => Map("CarMiles" -> miles)
+              case milesLiRegex(miles) => Map("miles" -> miles)
               case _ => Map()
             }
           }

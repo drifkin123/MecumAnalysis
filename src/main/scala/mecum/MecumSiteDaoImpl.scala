@@ -2,6 +2,8 @@ package mecum
 
 import java.util
 
+import mecum.App.mecumDao
+import org.jsoup.Connection.Response
 import org.jsoup.{Connection, Jsoup}
 import org.jsoup.nodes.{Document, Element, FormElement}
 import org.jsoup.select.Elements
@@ -14,6 +16,13 @@ class MecumSiteDaoImpl(
                         val searchPageURL: String,
                         val baseURL: String,
                         val loginURL: String) {
+
+  def login(creds: List[(String, String)]): Response = {
+    val conn: Connection = mecumDao.connect(mecumDao.loginURL)
+    val doc: Document = mecumDao.getDocument(conn)
+    val form: FormElement = mecumDao.findForm("infonet-login", doc)
+    submitForm(form, creds)
+  }
 
   def requestBodyForMake: (String, String) => String =
     (searchScope: String, make: String) =>
@@ -61,6 +70,9 @@ class MecumSiteDaoImpl(
     carLinkHrefList.toList
   }
 
-
+  def hrefOfNextPage(doc: Document): String = {
+    val el: Element = doc.body.select("[rel=next]").first()
+    el.attr("href")
+  }
 
 }

@@ -1,9 +1,7 @@
 package mecum
 
-import org.jsoup.Connection
 import org.jsoup.Connection.Response
-import org.jsoup.nodes.{Document, Element, FormElement}
-import org.jsoup.select.Elements
+import org.jsoup.nodes.{Document}
 
 
 object App extends App {
@@ -11,23 +9,23 @@ object App extends App {
   val appWiring = new AppWiring()
   val mecumDao: MecumSiteDaoImpl = appWiring.mecumDao
   val dataExtraction: DataExtractionImpl = appWiring.dataExtraction
-  // Login to mecum
-  val conn: Connection = mecumDao.connect(mecumDao.loginURL)
-  val doc: Document = mecumDao.getDocument(conn)
-  val form: FormElement = mecumDao.findForm("infonet-login", doc)
-  var res: Response = mecumDao.submitForm(form, List(("email", "danrifkin@sbcglobal.net")))
+
+  var res: Response = mecumDao.login(List(("email", "danrifkin@sbcglobal.net")))
 
   // Go to search page
   val searchPageConn: Document = mecumDao.submitSearchForm(res.cookies(), "past", "Ford")
-
-  // Get links of all cars
   val hrefsOfAllCarsOnPage = mecumDao.hrefsForAllCarsOnPage(searchPageConn)
-
-  // Prototype car link data extraction
-  val linkToCar: String = mecumDao.baseURL + hrefsOfAllCarsOnPage(2)
-  val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
-  dataExtraction.extractData(carLinkDoc)
-
   val carMapData = dataExtraction.dataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL)
   println(carMapData)
+
+//  val nextPageHref: String = mecumDao.hrefOfNextPage(searchPageConn)
+//
+//  val nextPage = mecumDao.connect(mecumDao.baseURL + nextPageHref, res.cookies()).get()
+//  val hrefsOfAllPage2Cars = mecumDao.hrefsForAllCarsOnPage(nextPage)
+//  val carMapData2 = dataExtraction.dataFromHrefs(hrefsOfAllPage2Cars, mecumDao.baseURL)
+//  println(carMapData2)
+
+
+  new SparkConnection().insertCars(carMapData)
+
 }
