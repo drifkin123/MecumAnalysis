@@ -15,9 +15,13 @@ class DataExtractionImpl {
             "lot" -> lot,
             "auctionLocation" -> location,
             "auctionDate" -> date)
-          case _ => Map()
+          case _ => Map("lot" -> "",
+            "auctionLocation" -> "",
+            "auctionDate" -> "")
         }
-      case _ => Map()
+      case _ => Map("lot" -> "",
+        "auctionLocation" -> "",
+        "auctionDate" -> "")
     }
   }
 
@@ -34,14 +38,14 @@ class DataExtractionImpl {
           case elRegex(results) => {
             val bidStatus = results.split(" ").filter(options.contains(_)).toList.lift(0)
             bidStatus match {
-              case Some(status) => Map("AuctionResult" -> status)
-              case _ => Map()
+              case Some(status) => Map("auctionResult" -> status)
+              case _ => Map("auctionResult" -> "")
             }
           }
-          case _ => Map()
+          case _ => Map("auctionResult" -> "")
         }
       }
-      case _ => Map()
+      case _ => Map("auctionResult" -> "")
     }
   }
 
@@ -50,11 +54,13 @@ class DataExtractionImpl {
     val elRegex = """([\d]+) (.*)""".r
 
     lot match {
-      case Some(lotEl) => lotEl.text() match {
+      case Some(lotEl) => {
+        lotEl.text() match {
           case elRegex(year, car) => Map("makeModel" -> car, "year" -> year)
-          case _ => Map()
+          case _ => Map("makeModel" -> "", "year" -> "")
         }
-      case _ => Map()
+      }
+      case _ => Map("makeModel" -> "", "year" -> "")
     }
   }
 
@@ -63,14 +69,15 @@ class DataExtractionImpl {
 
     price match {
       case Some(priceEl) => Map("price" -> priceEl.text())
-      case _ => Map()
+      case _ => Map("price" -> "")
     }
   }
 
-  def genMap(carComponents: List[String]): Map[String, String] = {
+  private def genMap(carComponents: List[String]): Map[String, String] = {
     val elRegex = """<li><h5>(.+)<\/h5>(.+)<\/li>""".r
 
-    carComponents match {
+    val initMap: Map[String, String] =  Map("Engine" -> "", "Trans" -> "", "Color" -> "", "Interior" -> "")
+    val ret: Map[String, String] = carComponents match {
       case List() => Map()
       case components :: rest => {
         components match {
@@ -79,25 +86,27 @@ class DataExtractionImpl {
         }
       }
     }
+
+    ret
   }
 
   def extractLotBreakdown(el: Element): Map[String, String] = {
     val lotBreakdownEl = Option(el.selectFirst(".lot-breakdown-list"))
 
     lotBreakdownEl match {
-      case Some(logBreakdown) => {
-        val children = logBreakdown.children()
+      case Some(lotBreakdown) => {
+        val children = lotBreakdown.children()
         val lotInfo = children.toString.split("\n").toList
         genMap(lotInfo)
       }
-      case _ => Map()
+      case _ => Map("Engine" -> "", "Trans" -> "", "Color" -> "", "Interior" -> "")
     }
 
   }
 
   def extractMiles(el: Element): Map[String, String] = {
     val milesEl = Option(el.selectFirst("ul.lot-highlights"))
-    val milesLiRegex = """.*[<li>| ]([0-9,]+) miles.*""".r
+    val milesLiRegex = """.*[<li>| ]([0-9,]+).*miles.*""".r
 
     milesEl match {
       case Some(highlights) => {
@@ -107,13 +116,13 @@ class DataExtractionImpl {
           case Some(milesLiEl) => {
             milesLiEl match {
               case milesLiRegex(miles) => Map("miles" -> miles)
-              case _ => Map()
+              case _ => Map("miles" -> "")
             }
           }
-          case _ => Map()
+          case _ => Map("miles" -> "")
         }
       }
-      case _ => Map()
+      case _ => Map("miles" -> "")
     }
   }
 
@@ -133,6 +142,9 @@ class DataExtractionImpl {
         val linkToCar: String = baseURL + href
         val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
         val carDataMap: Map[String, String] = extractData(carLinkDoc) ++ Map("Link" -> linkToCar)
+        println("------------------------------------")
+        for ((k, v) <- carDataMap) println(s"$k -> $v")
+        println()
         carDataMap :: dataFromHrefs(rest, baseURL)
       }
     }

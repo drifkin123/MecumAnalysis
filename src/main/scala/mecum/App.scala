@@ -26,6 +26,6 @@ object App extends App {
 //  println(carMapData2)
 
 
-  new SparkConnection().insertCars(carMapData)
+  //new SparkConnection().insertCars(carMapData)
 
 }
