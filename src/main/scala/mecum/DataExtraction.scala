@@ -68,7 +68,7 @@ class DataExtractionImpl {
     val price: Option[Element] = Option(el.selectFirst("span.lot-price"))
 
     price match {
-      case Some(priceEl) => Map("price" -> priceEl.text())
+      case Some(priceEl) => Map("price" -> priceEl.text().replaceAll("\\D", ""))
       case _ => Map("price" -> "")
     }
   }
@@ -115,7 +115,7 @@ class DataExtractionImpl {
         milesLi match {
           case Some(milesLiEl) => {
             milesLiEl match {
-              case milesLiRegex(miles) => Map("miles" -> miles)
+              case milesLiRegex(miles) => Map("miles" -> miles.replaceAll("\\D", ""))
               case _ => Map("miles" -> "")
             }
           }

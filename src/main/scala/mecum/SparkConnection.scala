@@ -1,7 +1,11 @@
 package mecum
 
-import org.apache.spark.sql.{SparkSession}
-import org.elasticsearch.spark.sql
+// import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import org.apache.spark.SparkConf
+
+import org.elasticsearch.spark._
 
 case class CarMeta(year: String, makeModel: String, engine: String,
                    trans: String, miles: String, color: String, interior: String,
@@ -10,13 +14,26 @@ case class CarMeta(year: String, makeModel: String, engine: String,
 
 class SparkConnection {
 
-  val sparkSession = SparkSession.
-    builder.
-    master("local").
-    appName("mecum-analyzer2").
-    getOrCreate()
+//  val sparkSession = SparkSession.
+//    builder.
+//    master("local").
+//    appName("mecum-analyzer2").
+//    getOrCreate()
+//
+//  import sparkSession.implicits._
+  val conf = new SparkConf().setAppName("mecum-analyzer2").setMaster("local")
+  val sc = new SparkContext(conf)
+  val numbers = Map("one" -> 1, "two" -> 2, "three" -> 3)
+  val airports = Map("arrival" -> "Otopeni", "SFO" -> "San Fran")
 
-  import sparkSession.implicits._
+  sc.makeRDD(
+    Seq(numbers, airports)
+  ).saveToEs("spark/docs")
+
+
+  def run(): Unit = {
+    println("SADLFKSDAF")
+  }
 
   def mapToCaseClass(carMap: Map[String, String]): CarMeta = {
     CarMeta(
@@ -26,11 +43,12 @@ class SparkConnection {
     )
   }
 
-  def insertCars(cars: List[Map[String, String]]) = {
-    val mapOfCars: Seq[CarMeta] = cars.map(carMap => mapToCaseClass(carMap))
-    val carMapDF = mapOfCars.toDF()
-    carMapDF.show()
 
 
-  }
+//  def insertCars(cars: List[Map[String, String]]) = {
+//    val mapOfCars: Seq[CarMeta] = cars.map(carMap => mapToCaseClass(carMap))
+//    val carMapDF = mapOfCars.toDF()
+//    carMapDF.show()
+//  }
+
 }

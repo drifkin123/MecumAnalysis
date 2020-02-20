@@ -24,8 +24,7 @@ object App extends App {
 //  val hrefsOfAllPage2Cars = mecumDao.hrefsForAllCarsOnPage(nextPage)
 //  val carMapData2 = dataExtraction.dataFromHrefs(hrefsOfAllPage2Cars, mecumDao.baseURL)
 //  println(carMapData2)
-
-
+  new SparkConnection().run()
   //new SparkConnection().insertCars(carMapData)
 
 }

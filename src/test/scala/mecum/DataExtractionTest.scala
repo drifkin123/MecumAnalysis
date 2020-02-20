@@ -71,7 +71,7 @@ class DataExtractionTest extends Assertions {
       "price" -> "5000"
     )
 
-    val retText: String = "5000"
+    val retText: String = "$5,000"
     val el = ElementStub(retText)
 
     val actual = uut.extractPrice(el)
@@ -97,9 +97,9 @@ class DataExtractionTest extends Assertions {
     assert(expected.toSet == actual.toSet)
   }
 
-  @Test def shouldExtractMiles(): Unit = {
+  @Test def shouldExtractMiles1(): Unit = {
     val expected = Map(
-      "miles" -> "8,200"
+      "miles" -> "8200"
     )
 
     val el = new Element("ul").
@@ -127,5 +127,18 @@ class DataExtractionTest extends Assertions {
     val actual = uut.extractMiles(el)
     assert(expected.toSet == actual.toSet)
   }
+  @Test def shouldExtractMiles2(): Unit = {
+    val expected = Map(
+      "miles" -> "8200"
+    )
 
+    val el = new Element("ul").
+      attr("class", "lot-highlights").
+      append("<li>8 passenger seating</li> \n" +
+        " <li>Leather seats</li> \n" +
+        " <li>With 8,200 actual miles</li> ")
+
+    val actual = uut.extractMiles(el)
+    assert(expected.toSet == actual.toSet)
+  }
 }
