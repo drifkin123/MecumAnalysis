@@ -70,9 +70,13 @@ class MecumSiteDaoImpl(
     carLinkHrefList.toList
   }
 
-  def hrefOfNextPage(doc: Document): String = {
-    val el: Element = doc.body.select("[rel=next]").first()
-    el.attr("href")
+  def hrefOfNextPage(doc: Document): Option[String] = {
+    val el: Option[Element] = Option(doc.body.select("[rel=next]").first())
+
+    el match {
+      case Some(next) => Some(next.attr("href"))
+      case _ => None
+    }
   }
 
 }

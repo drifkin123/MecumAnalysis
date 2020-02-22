@@ -5,16 +5,42 @@ import org.jsoup.nodes.Element
 
 class DataExtractionImpl {
 
+  def convertToTimeStamp(date: String): String = {
+    val regex = raw"^([\d]+) (\w+) (\d+)-(\d+)".r
+
+    val monthToIntMap = Map(
+      "Jan" -> 1, "Feb" -> 2,
+      "Mar" -> 3, "Apr" -> 4,
+      "May" -> 5, "June" -> 6,
+      "Jul" -> 7, "Aug" -> 8,
+      "Sep" -> 9, "Oct" -> 10,
+      "Nov" -> 11, "Dec" -> 12
+    )
+
+    val formatter = "%04d-%02d-%02dT00:00:00Z"
+
+    date match {
+      case regex(year, month, startDay, endDay) => {
+        val startDate = formatter.format(year.toInt, monthToIntMap(month), startDay.toInt)
+        startDate
+      }
+      case _ => ""
+    }
+  }
+
   def extractAuctionInfo(el: Element): Map[String, String] = {
     val lotAuctionInfo = Option(el.selectFirst("h3.lot-auction-info"))
     val elRegex = raw"(Lot [^ ]+) ([^0-9]+) (.*)".r
 
     lotAuctionInfo match {
       case Some(auctionInfoEl) => auctionInfoEl.text match {
-          case elRegex(lot, location, date) => Map(
-            "lot" -> lot,
-            "auctionLocation" -> location,
-            "auctionDate" -> date)
+          case elRegex(lot, location, date) => {
+            val convertedDate = convertToTimeStamp(date)
+            Map(
+              "lot" -> lot,
+              "auctionLocation" -> location,
+              "auctionDate" -> convertedDate)
+          }
           case _ => Map("lot" -> "",
             "auctionLocation" -> "",
             "auctionDate" -> "")
@@ -135,6 +161,7 @@ class DataExtractionImpl {
       extractMiles(el)
   }
 
+  // TODO: Make asynchronous
   def dataFromHrefs(hrefs: List[String], baseURL: String): List[Map[String, String]] =
     hrefs match {
       case List() => List()
@@ -144,6 +171,7 @@ class DataExtractionImpl {
         val carDataMap: Map[String, String] = extractData(carLinkDoc) ++ Map("Link" -> linkToCar)
         println("------------------------------------")
         for ((k, v) <- carDataMap) println(s"$k -> $v")
+        //println(carDataMap("makeModel"))
         println()
         carDataMap :: dataFromHrefs(rest, baseURL)
       }

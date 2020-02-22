@@ -23,16 +23,16 @@ class SparkConnection {
 //  import sparkSession.implicits._
   val conf = new SparkConf().setAppName("mecum-analyzer2").setMaster("local")
   val sc = new SparkContext(conf)
-  val numbers = Map("one" -> 1, "two" -> 2, "three" -> 3)
-  val airports = Map("arrival" -> "Otopeni", "SFO" -> "San Fran")
+  //val numbers = Map("one" -> 1, "two" -> 2, "three" -> 3)
+  //val airports = Map("arrival" -> "Otopeni", "SFO" -> "San Fran")
 
-  sc.makeRDD(
-    Seq(numbers, airports)
-  ).saveToEs("spark/docs")
+  //sc.makeRDD(
+  //  Seq(numbers, airports)
+  //).saveToEs("spark/docs")
 
 
-  def run(): Unit = {
-    println("SADLFKSDAF")
+  def run(cars: Seq[Map[String, String]]): Unit = {
+    sc.makeRDD(cars).saveToEs("mecum")
   }
 
   def mapToCaseClass(carMap: Map[String, String]): CarMeta = {
