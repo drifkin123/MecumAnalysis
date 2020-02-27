@@ -3,6 +3,11 @@ package mecum
 import mecum.App.{mecumDao, res}
 import org.jsoup.nodes.Element
 
+import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
+
 class DataExtractionImpl {
 
   def convertToTimeStamp(date: String): String = {
@@ -161,19 +166,42 @@ class DataExtractionImpl {
       extractMiles(el)
   }
 
+  def getDataFromHrefs(hrefs: List[String], baseURL: String): Seq[Map[String, String]] = {
+    val requestPageElements = dataFromHrefs(hrefs, baseURL)
+    val resolvedPageElements = getDataFromFuturesAwait(requestPageElements)
+    val extractedCarData = getDataFromResolvedFutures(resolvedPageElements)
+    extractedCarData
+  }
   // TODO: Make asynchronous
-  def dataFromHrefs(hrefs: List[String], baseURL: String): List[Map[String, String]] =
-    hrefs match {
+  def dataFromHrefs(hrefs: List[String], baseURL: String): List[Future[Element]] = {
+    val listOfFutures = hrefs match {
       case List() => List()
       case href :: rest => {
         val linkToCar: String = baseURL + href
-        val carLinkDoc: Element = mecumDao.connect(linkToCar, res.cookies()).get().body()
-        val carDataMap: Map[String, String] = extractData(carLinkDoc) ++ Map("Link" -> linkToCar)
-        println("------------------------------------")
-        for ((k, v) <- carDataMap) println(s"$k -> $v")
-        //println(carDataMap("makeModel"))
-        println()
-        carDataMap :: dataFromHrefs(rest, baseURL)
+        val carLinkDoc: Future[Element] = Future {
+          mecumDao.connect(linkToCar, res.cookies()).get().body()
+        }
+        carLinkDoc :: dataFromHrefs(rest, baseURL)
       }
     }
+
+    listOfFutures;
+  }
+
+  def lift[T](futures: Seq[Future[T]]): Seq[Future[Try[T]]] =
+    futures.map(_.map { Success(_) }.recover { case t => Failure(t) })
+
+  def getDataFromFuturesAwait(futures: Seq[Future[Element]]): Seq[Try[Element]] = {
+    Await.result(Future.sequence(lift(futures)), Duration.Inf)
+  }
+
+  def getDataFromResolvedFutures(resolvedFutures: Seq[Try[Element]]): Seq[Map[String, String]] = {
+    resolvedFutures.map(f => {
+      val extractedData = extractData(f.get)
+      println("--------------------------")
+      println(extractedData)
+      println()
+      extractedData
+    })
+  }
 }
