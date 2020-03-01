@@ -2,7 +2,6 @@ package mecum
 
 import java.util
 
-import mecum.App.mecumDao
 import org.jsoup.Connection.Response
 import org.jsoup.{Connection, Jsoup}
 import org.jsoup.nodes.{Document, Element, FormElement}
@@ -10,17 +9,19 @@ import org.jsoup.select.Elements
 
 import collection.JavaConverters._
 
-class MecumSiteDaoImpl(
-                        val referrer: String,
-                        val userAgent: String,
-                        val searchPageURL: String,
-                        val baseURL: String,
-                        val loginURL: String) {
+class MecumSiteDaoImpl() {
+
+  val referrer = "https://www.mecum.com/infonet/search/reset/1/"
+  val userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) " +
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
+  val loginURL: String = "https://www.mecum.com/infonet/login/"
+  val searchPageURL: String = "https://www.mecum.com/infonet/search/reset/1"
+  val baseURL: String = "https://www.mecum.com"
 
   def login(creds: List[(String, String)]): Response = {
-    val conn: Connection = mecumDao.connect(mecumDao.loginURL)
-    val doc: Document = mecumDao.getDocument(conn)
-    val form: FormElement = mecumDao.findForm("infonet-login", doc)
+    val conn: Connection = connect(loginURL)
+    val doc: Document = getDocument(conn)
+    val form: FormElement = findForm("infonet-login", doc)
     submitForm(form, creds)
   }
 
@@ -78,5 +79,4 @@ class MecumSiteDaoImpl(
       case _ => None
     }
   }
-
 }

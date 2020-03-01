@@ -1,14 +1,8 @@
 package mecum
 
-import mecum.App.{mecumDao, res}
 import org.jsoup.nodes.Element
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.util.{Failure, Success, Try}
-
-class DataExtractionImpl {
+class DataExtractionImpl() {
 
   def convertToTimeStamp(date: String): String = {
     val regex = raw"^([\d]+) (\w+) (\d+)-(\d+)".r
@@ -39,17 +33,17 @@ class DataExtractionImpl {
 
     lotAuctionInfo match {
       case Some(auctionInfoEl) => auctionInfoEl.text match {
-          case elRegex(lot, location, date) => {
-            val convertedDate = convertToTimeStamp(date)
-            Map(
-              "lot" -> lot,
-              "auctionLocation" -> location,
-              "auctionDate" -> convertedDate)
-          }
-          case _ => Map("lot" -> "",
-            "auctionLocation" -> "",
-            "auctionDate" -> "")
+        case elRegex(lot, location, date) => {
+          val convertedDate = convertToTimeStamp(date)
+          Map(
+            "lot" -> lot,
+            "auctionLocation" -> location,
+            "auctionDate" -> convertedDate)
         }
+        case _ => Map("lot" -> "",
+          "auctionLocation" -> "",
+          "auctionDate" -> "")
+      }
       case _ => Map("lot" -> "",
         "auctionLocation" -> "",
         "auctionDate" -> "")
@@ -107,8 +101,7 @@ class DataExtractionImpl {
   private def genMap(carComponents: List[String]): Map[String, String] = {
     val elRegex = """<li><h5>(.+)<\/h5>(.+)<\/li>""".r
 
-    val initMap: Map[String, String] =  Map("Engine" -> "", "Trans" -> "", "Color" -> "", "Interior" -> "")
-    val ret: Map[String, String] = carComponents match {
+    carComponents match {
       case List() => Map()
       case components :: rest => {
         components match {
@@ -117,8 +110,6 @@ class DataExtractionImpl {
         }
       }
     }
-
-    ret
   }
 
   def extractLotBreakdown(el: Element): Map[String, String] = {
@@ -164,44 +155,5 @@ class DataExtractionImpl {
       extractPrice(el) ++
       extractLotBreakdown(el) ++
       extractMiles(el)
-  }
-
-  def getDataFromHrefs(hrefs: List[String], baseURL: String): Seq[Map[String, String]] = {
-    val requestPageElements = dataFromHrefs(hrefs, baseURL)
-    val resolvedPageElements = getDataFromFuturesAwait(requestPageElements)
-    val extractedCarData = getDataFromResolvedFutures(resolvedPageElements)
-    extractedCarData
-  }
-  // TODO: Make asynchronous
-  def dataFromHrefs(hrefs: List[String], baseURL: String): List[Future[Element]] = {
-    val listOfFutures = hrefs match {
-      case List() => List()
-      case href :: rest => {
-        val linkToCar: String = baseURL + href
-        val carLinkDoc: Future[Element] = Future {
-          mecumDao.connect(linkToCar, res.cookies()).get().body()
-        }
-        carLinkDoc :: dataFromHrefs(rest, baseURL)
-      }
-    }
-
-    listOfFutures;
-  }
-
-  def lift[T](futures: Seq[Future[T]]): Seq[Future[Try[T]]] =
-    futures.map(_.map { Success(_) }.recover { case t => Failure(t) })
-
-  def getDataFromFuturesAwait(futures: Seq[Future[Element]]): Seq[Try[Element]] = {
-    Await.result(Future.sequence(lift(futures)), Duration.Inf)
-  }
-
-  def getDataFromResolvedFutures(resolvedFutures: Seq[Try[Element]]): Seq[Map[String, String]] = {
-    resolvedFutures.map(f => {
-      val extractedData = extractData(f.get)
-      println("--------------------------")
-      println(extractedData)
-      println()
-      extractedData
-    })
   }
 }
