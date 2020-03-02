@@ -9,29 +9,30 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class CarData(mecumDao: MecumSiteDaoImpl, dataExtraction: DataExtractionImpl) {
+class CarData(mecumDao: MecumSiteDaoImpl, dataExtraction: DataExtractionImpl, sc: SparkConnection) {
 
   def getCarsByMake(make: String) = {
     val res: Response = mecumDao.login(List(("email", "danrifkin@sbcglobal.net")))
     val searchPageConn: Document = mecumDao.submitSearchForm(res.cookies(), "past", make)
     val hrefsOfAllCarsOnPage = mecumDao.hrefsForAllCarsOnPage(searchPageConn)
+    val esCarData = carData.getDataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL, res)
 
-    carData.getDataFromHrefs(hrefsOfAllCarsOnPage, mecumDao.baseURL, res)
+    sc.insertToES(esCarData, make)
 
     val possibleNextPageHref: Option[String] = mecumDao.hrefOfNextPage(searchPageConn)
-    carsForNextPages(possibleNextPageHref, res)
+    carsForNextPages(possibleNextPageHref, res, make)
   }
 
-  def carsForNextPages(nextPageHref: Option[String], res: Response): Unit = {
+  def carsForNextPages(nextPageHref: Option[String], res: Response, make: String): Unit = {
     println(s"Next page: $nextPageHref")
     nextPageHref match {
       case Some(href) => {
         val nextPage = mecumDao.connect(mecumDao.baseURL + href, res.cookies()).get()
         val hrefsOfAllPage2Cars = mecumDao.hrefsForAllCarsOnPage(nextPage)
-        val carMapData2 = carData.getDataFromHrefs(hrefsOfAllPage2Cars, mecumDao.baseURL, res)
+        val esCarData = carData.getDataFromHrefs(hrefsOfAllPage2Cars, mecumDao.baseURL, res)
+        sc.insertToES(esCarData, make)
         val thePageAfterThis = mecumDao.hrefOfNextPage(nextPage)
-        carsForNextPages(thePageAfterThis, res)
-        // Insert carMapData to ES
+        carsForNextPages(thePageAfterThis, res, make)
       }
       case _ => {
         println("Done...")
@@ -46,13 +47,13 @@ class CarData(mecumDao: MecumSiteDaoImpl, dataExtraction: DataExtractionImpl) {
     extractedCarData
   }
 
-  def dataFromHrefs(hrefs: List[String], baseURL: String, res: Response): List[Future[Element]] = {
+  def dataFromHrefs(hrefs: List[String], baseURL: String, res: Response): List[Future[(Element, String)]] = {
     val listOfFutures = hrefs match {
       case List() => List()
       case href :: rest => {
         val linkToCar: String = baseURL + href
-        val carLinkDoc: Future[Element] = Future {
-          mecumDao.connect(linkToCar, res.cookies()).get().body()
+        val carLinkDoc: Future[(Element, String)] = Future {
+          (mecumDao.connect(linkToCar, res.cookies()).get().body(), linkToCar)
         }
         carLinkDoc :: dataFromHrefs(rest, baseURL, res)
       }
@@ -66,13 +67,13 @@ class CarData(mecumDao: MecumSiteDaoImpl, dataExtraction: DataExtractionImpl) {
       Success(_)
     }.recover { case t => Failure(t) })
 
-  def getDataFromFuturesAwait(futures: Seq[Future[Element]]): Seq[Try[Element]] = {
+  def getDataFromFuturesAwait(futures: Seq[Future[(Element, String)]]): Seq[Try[(Element, String)]] = {
     Await.result(Future.sequence(lift(futures)), Duration.Inf)
   }
 
-  def getDataFromResolvedFutures(resolvedFutures: Seq[Try[Element]]): Seq[Map[String, String]] = {
+  def getDataFromResolvedFutures(resolvedFutures: Seq[Try[(Element, String)]]): Seq[Map[String, String]] = {
     resolvedFutures.map(f => {
-      val extractedData = dataExtraction.extractData(f.get)
+      val extractedData = dataExtraction.extractData(f.get._1) + ("link" -> f.get._2)
       println("--------------------------")
       println(extractedData)
       println()
