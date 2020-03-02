@@ -1,6 +1,6 @@
 package mecum
 
-import mecum.AppWiring.{carData, mecumDao}
+import mecum.AppWiring.{carData, logger}
 import org.jsoup.Connection.Response
 import org.jsoup.nodes.{Document, Element}
 
@@ -74,9 +74,7 @@ class CarData(mecumDao: MecumSiteDaoImpl, dataExtraction: DataExtractionImpl, sc
   def getDataFromResolvedFutures(resolvedFutures: Seq[Try[(Element, String)]]): Seq[Map[String, String]] = {
     resolvedFutures.map(f => {
       val extractedData = dataExtraction.extractData(f.get._1) + ("link" -> f.get._2)
-      println("--------------------------")
-      println(extractedData)
-      println()
+      logger.logToFile(extractedData.toString() + "\n")
       extractedData
     })
   }
